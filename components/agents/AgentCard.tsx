@@ -1,57 +1,83 @@
+// Actualizar AgentCard.tsx para pasar las cookies correctamente
+
 'use client';
 import React, { useState } from 'react';
 import { Star, Lock, CheckCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import supabase from '@/lib/supabase';
 
 export default function AgentCard({ agent, onPreview }: { agent: any, onPreview: (agent: any) => void }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  cconst handleStartConversation = async () => {
+  const handleStartConversation = async () => {
     setLoading(true);
+    console.log('🎯 Starting conversation for agent:', agent.name);
     
-    // Debug: verificar autenticación del lado del cliente
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log('Client session:', session);
-    
-    if (!session) {
-      alert('No estás autenticado. Por favor inicia sesión.');
-      setLoading(false);
-      return;
-    }
-  
     try {
-      // Crear nueva conversación
+      // 1. Verificar autenticación
+      console.log('🔍 Checking authentication...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError);
+        alert(`Error de sesión: ${sessionError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      if (!session) {
+        console.log('❌ No session found');
+        alert('No estás autenticado. Por favor inicia sesión.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ Session found:', {
+        user: session.user.email,
+        expires: session.expires_at
+      });
+
+      // 2. Crear conversación con headers de autenticación
+      console.log('🚀 Creating conversation...');
+      
+      // Obtener todas las cookies para pasarlas al servidor
+      const allCookies = document.cookie;
+      console.log('🍪 Sending cookies:', allCookies ? 'Present' : 'Missing');
+
       const response = await fetch('/api/conversations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Agregar header de autorización si es necesario
           'Authorization': `Bearer ${session.access_token}`,
+          'Cookie': allCookies, // Pasar todas las cookies
         },
+        credentials: 'include', // Importante: incluir cookies
         body: JSON.stringify({
           agentType: agent.id,
           title: `Conversación con ${agent.name}`
         })
       });
-  
-      console.log('Response status:', response.status);
-      
+
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
+      const responseText = await response.text();
+      console.log('📡 Response text:', responseText);
+
       if (!response.ok) {
-        const errorData = await response.text();
-        console.log('Error response:', errorData);
-        throw new Error('Error creando conversación');
+        throw new Error(`HTTP ${response.status}: ${responseText}`);
       }
-  
-      const conversation = await response.json();
-      console.log('Conversation created:', conversation);
+
+      const conversation = JSON.parse(responseText);
+      console.log('✅ Conversation created:', conversation);
       
-      // Redirigir al chat con el ID de la conversación
+      // Redirigir al chat
       router.push(`/dashboard/chat/${conversation.id}?agent=${agent.id}`);
       
     } catch (error) {
-      console.error('Error starting conversation:', error);
-      alert('Error iniciando conversación. Intenta de nuevo.');
+      console.error('💥 Error starting conversation:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
       setLoading(false);
     }
