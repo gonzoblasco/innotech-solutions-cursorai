@@ -1,0 +1,56 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import type { Database } from './types/database';
+
+const PUBLIC_PATHS = ['/', '/auth', '/auth/login', '/auth/register', '/auth/reset-password', '/api/auth'];
+
+export async function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
+  const isPublic = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(path + '/'));
+
+  // Excluir archivos estáticos y recursos
+  if (/^\/(_next|favicon\.ico|.*\.(png|jpg|jpeg|svg|css|js))($|\/)/.test(pathname)) {
+    return NextResponse.next();
+  }
+
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient<Database>({ req, res });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  console.log('[middleware] pathname:', pathname, '| user:', !!user);
+
+  // Si está en /auth/* y autenticado, redirigir a /dashboard
+  if (pathname.startsWith('/auth') && user) {
+    if (pathname !== '/dashboard') {
+      console.log('[middleware] Redirigiendo de /auth/* a /dashboard');
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
+  }
+
+  // Si está en /dashboard/* y no autenticado, redirigir a login
+  if (pathname.startsWith('/dashboard') && !user) {
+    if (!pathname.startsWith('/auth/login')) {
+      const redirect = encodeURIComponent(pathname + (search || ''));
+      console.log('[middleware] Redirigiendo de /dashboard/* a /auth/login');
+      return NextResponse.redirect(new URL(`/auth/login?redirect=${redirect}`, req.url));
+    }
+  }
+
+  // Permitir acceso a rutas públicas
+  if (isPublic) {
+    console.log('[middleware] Ruta pública, acceso permitido');
+    return res;
+  }
+
+  // Refrescar tokens automáticamente
+  await supabase.auth.getSession();
+  return res;
+}
+
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.css$|.*\\.js$).*)',
+  ],
+}; 
