@@ -21,10 +21,10 @@ export default function Sidebar({ active, onClose }: { active?: boolean; onClose
         <Menu className="w-6 h-6" />
       </button>
       {/* Overlay mobile */}
-      <div className={cn('fixed inset-0 bg-black/40 z-30 transition-opacity', open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none', 'md:hidden')} onClick={handleToggle} />
+      <div className={cn('fixed inset-0 w-full h-full bg-black/40 z-30 transition-opacity', open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none', 'md:hidden')} onClick={handleToggle} />
       {/* Sidebar */}
       <aside className={cn(
-        'fixed z-40 top-0 left-0 h-full w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-300 ease-in-out',
+        'fixed z-40 top-0 left-0 h-screen w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-300 ease-in-out',
         open ? 'translate-x-0' : '-translate-x-full',
         'md:translate-x-0 md:static md:block md:w-56 md:shadow-none md:border-none'
       )}>
