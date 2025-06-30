@@ -1,56 +1,49 @@
-export interface Profile {
-  id: string;
-  email: string;
-  full_name: string | null;
-  subscription_tier: 'free' | 'premium' | 'enterprise';
-  api_usage_current: number;
-  api_quota: number;
-  country: string | null;
-  created_at: string;
-}
-
 export interface Database {
   public: {
     Tables: {
       profiles: {
-        Row: Profile;
-        Insert: Omit<Profile, 'id' | 'created_at'>;
-        Update: Partial<Omit<Profile, 'id' | 'created_at'>>;
+        Row: {
+          id: string;
+          email: string;
+          full_name: string | null;
+          subscription_tier: 'free' | 'premium' | 'enterprise';
+          api_usage_current: number;
+          api_quota: number;
+          country: string | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'id' | 'created_at'>;
+        Update: Partial<Omit<Database['public']['Tables']['profiles']['Row'], 'id' | 'created_at'>>;
+      };
+      conversations: {
+        Row: {
+          id: string;
+          user_id: string;
+          agent_type: string;
+          title: string | null;
+          status: 'active' | 'archived';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['conversations']['Row'], 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Database['public']['Tables']['conversations']['Row'], 'id' | 'created_at' | 'updated_at'>>;
+      };
+      messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          role: 'user' | 'assistant';
+          content: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['messages']['Row'], 'id' | 'created_at'>;
+        Update: Partial<Omit<Database['public']['Tables']['messages']['Row'], 'id' | 'created_at'>>;
       };
     };
   };
-} 
-
-export interface Conversation {
-  id: string;
-  user_id: string;
-  agent_type: 'business' | 'finance' | 'health' | 'education' | 'personal';
-  title: string | null;
-  model_type: string;
-  status: 'active' | 'archived' | 'deleted';
-  created_at: string;
-  updated_at: string;
 }
 
-export interface Message {
-  id: string;
-  conversation_id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  token_count: number;
-  cost: number;
-  model_used: string | null;
-  processing_time_ms: number | null;
-  created_at: string;
-}
-
-export interface AIUsage {
-  id: string;
-  user_id: string;
-  conversation_id: string | null;
-  model_type: string;
-  tokens_used: number;
-  cost: number;
-  response_time_ms: number | null;
-  created_at: string;
-}
+// Exportar tipos individuales
+export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type Conversation = Database['public']['Tables']['conversations']['Row'];
+export type Message = Database['public']['Tables']['messages']['Row'];

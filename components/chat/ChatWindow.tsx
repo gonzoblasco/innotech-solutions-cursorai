@@ -33,29 +33,55 @@ export default function ChatWindow({ agent }:{ agent: any }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Simular respuesta del agente
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const newMsg = {
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
+    
+    setLoading(true);
+    const userMessage = {
       id: Date.now().toString(),
-      role: 'user',
+      role: 'user' as const,
       content: input,
       timestamp: new Date(),
-      status: 'delivered'
+      status: 'delivered' as const
     };
-    setMessages((msgs) => [...msgs, newMsg]);
+    
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setTyping(true);
-    setTimeout(() => {
-      setMessages((msgs) => [...msgs, {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: 'Respuesta simulada del agente...',
+  
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: input,
+          conversationId: 'temp-conversation-id', // Necesitas obtener esto del contexto
+          agentType: agent.id
+        })
+      });
+  
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Error en la respuesta');
+      }
+  
+      const aiMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant' as const,
+        content: data.response,
         timestamp: new Date(),
-        status: 'delivered'
-      }]);
+        status: 'delivered' as const
+      };
+  
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Mostrar error al usuario
+    } finally {
+      setLoading(false);
       setTyping(false);
-    }, 1200);
+    }
   };
 
   // Resetear conversación

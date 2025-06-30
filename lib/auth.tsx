@@ -74,17 +74,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Registro de usuario y creación de perfil
-  const signUp = async (email: string, password: string, userData: Omit<Profile, 'id' | 'created_at' | 'email'>) => {
-    setLoading(true);
-    setError(null);
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error || !data.user) {
-      setError(mapAuthError(error?.message));
-      setLoading(false);
-      return;
-    }
-    // Crear perfil
+  // En signUp, manejar Google signup
+const signUp = async (email: string, password: string, userData?: Omit<Profile, 'id' | 'created_at' | 'email'>) => {
+  setLoading(true);
+  setError(null);
+  
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error || !data.user) {
+    setError(mapAuthError(error?.message));
+    setLoading(false);
+    return;
+  }
+
+  // Solo crear perfil si tenemos userData (registro manual)
+  if (userData) {
     const { error: profileError } = await supabase.from('profiles').insert({
       ...userData,
       id: data.user.id,
@@ -92,12 +95,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (profileError) {
       setError('Usuario creado, pero hubo un error creando el perfil.');
-    } else {
-      await fetchProfile(data.user);
     }
-    setUser(data.user);
-    setLoading(false);
-  };
+  }
+  
+  setUser(data.user);
+  await fetchProfile(data.user);
+  setLoading(false);
+};
 
   // Login básico
   const signIn = async (email: string, password: string) => {
