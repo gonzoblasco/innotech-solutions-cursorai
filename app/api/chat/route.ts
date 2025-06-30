@@ -3,12 +3,15 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { generateResponse } from '@/lib/gemini/client';
 import { AGENT_PROMPTS } from '@/lib/agents/prompts';
+import type { Database } from '@/types/database';
 
 export async function POST(request: NextRequest) {
   try {
     const { message, conversationId, agentType } = await request.json();
     
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
+    
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
@@ -67,6 +70,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error en chat API:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Error interno del servidor' 
+    }, { status: 500 });
   }
 }

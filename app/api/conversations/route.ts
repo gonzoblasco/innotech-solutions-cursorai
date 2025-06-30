@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import type { Database } from '@/types/database';
 
 export async function POST(request: NextRequest) {
   try {
     const { agentType, title } = await request.json();
     
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
+    
     const { data: { user } } = await supabase.auth.getUser();
+    
+    console.log('User in API:', user); // Debug log
     
     if (!user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -18,23 +23,31 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         agent_type: agentType,
-        title: title || `Conversación con ${agentType}`
+        title: title || `Conversación con ${agentType}`,
+        status: 'active'
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      throw error;
+    }
 
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error creating conversation:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Error interno del servidor' 
+    }, { status: 500 });
   }
 }
 
 export async function GET() {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
+    
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
@@ -53,6 +66,8 @@ export async function GET() {
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Error interno del servidor' 
+    }, { status: 500 });
   }
 }
